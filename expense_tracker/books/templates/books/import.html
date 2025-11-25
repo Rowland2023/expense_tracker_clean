@@ -1,0 +1,9 @@
+{% extends "books/base.html" %}
+{% block content %}
+<h1>Import books</h1>
+<form method="post" enctype="multipart/form-data">{% csrf_token %}
+  {{ form.as_p }}
+  <button type="submit">Upload</button>
+</form>
+<p>Expected columns: title, author, publishing_date (YYYY-MM-DD), category, distribution_expenses.</p>
+{% endblock %}

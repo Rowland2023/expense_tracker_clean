@@ -1,0 +1,27 @@
+{% load static %}
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Expense Tracker</title>
+  <link rel="stylesheet" href="{% static 'styles.css' %}">
+</head>
+<body>
+  <nav>
+    <a href="{% url 'books:category_list' %}">Categories</a> |
+    <a href="{% url 'books:book_list' %}">Books</a> |
+    <a href="{% url 'books:import' %}">Import</a> |
+    <a href="{% url 'books:report' %}">Report</a>
+  </nav>
+  {% if messages %}
+    <ul class="messages">
+      {% for message in messages %}
+        <li>{{ message }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
