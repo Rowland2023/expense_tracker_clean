@@ -1,4 +1,6 @@
 from django.urls import path
+from django.contrib.auth import views as auth_views
+from .views import RegisterView
 from .views import (
     CategoryListView, CategoryCreateView, CategoryUpdateView, CategoryDeleteView,
     BookListView, BookCreateView, BookUpdateView, BookDeleteView,
@@ -23,4 +25,11 @@ urlpatterns = [
     # Import and report
     path("import/", ImportView.as_view(), name="import"),
     path("report/", ReportView.as_view(), name="report"),
+
+    #logging/loggout
+    path("login/", auth_views.LoginView.as_view(), name="login"),
+    path("logout/", auth_views.LogoutView.as_view(), name="logout"),
+
+    #Registration
+    path("register/", RegisterView.as_view(), name="register"),
 ]

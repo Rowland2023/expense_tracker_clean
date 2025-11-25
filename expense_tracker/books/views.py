@@ -10,67 +10,92 @@ from django.urls import reverse_lazy
 from django.views.generic import (
     ListView, CreateView, UpdateView, DeleteView, TemplateView, FormView
 )
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.forms import UserCreationForm
 from django import forms
 
+# Import your models from the current application
+# NOTE: Ensure BookCategory and Book models exist in your models.py
 from .models import BookCategory, Book
 
+# ----------------------------------------------------------------------
+# 🔑 Authentication Views
+# ----------------------------------------------------------------------
 
-# ===== CRUD views for categories =====
-class CategoryListView(ListView):
+class RegisterView(CreateView):
+    """Handles user registration using Django's built-in UserCreationForm."""
+    form_class = UserCreationForm
+    template_name = 'books/register.html'
+    
+    # Redirects to the namespaced login URL after successful registration
+    success_url = reverse_lazy('books:login')
+
+
+# ----------------------------------------------------------------------
+# 📚 CRUD views for categories (Login Required)
+# ----------------------------------------------------------------------
+
+class CategoryListView(LoginRequiredMixin, ListView):
     model = BookCategory
     template_name = "books/category_list.html"
     context_object_name = "categories"
 
 
-class CategoryCreateView(CreateView):
+class CategoryCreateView(LoginRequiredMixin, CreateView):
     model = BookCategory
     fields = ["name"]
     template_name = "books/category_form.html"
     success_url = reverse_lazy("books:category_list")
 
 
-class CategoryUpdateView(UpdateView):
+class CategoryUpdateView(LoginRequiredMixin, UpdateView):
     model = BookCategory
     fields = ["name"]
     template_name = "books/category_form.html"
     success_url = reverse_lazy("books:category_list")
 
 
-class CategoryDeleteView(DeleteView):
+class CategoryDeleteView(LoginRequiredMixin, DeleteView):
     model = BookCategory
     template_name = "books/category_confirm_delete.html"
     success_url = reverse_lazy("books:category_list")
 
 
-# ===== CRUD views for books =====
-class BookListView(ListView):
+# ----------------------------------------------------------------------
+# 📖 CRUD views for books (Login Required)
+# ----------------------------------------------------------------------
+
+class BookListView(LoginRequiredMixin, ListView):
+    # This is the class that was reported as missing
     model = Book
     template_name = "books/book_list.html"
     context_object_name = "books"
     paginate_by = 20
 
 
-class BookCreateView(CreateView):
+class BookCreateView(LoginRequiredMixin, CreateView):
     model = Book
     fields = ["title", "author", "publishing_date", "category", "distribution_expenses"]
     template_name = "books/book_form.html"
     success_url = reverse_lazy("books:book_list")
 
 
-class BookUpdateView(UpdateView):
+class BookUpdateView(LoginRequiredMixin, UpdateView):
     model = Book
     fields = ["title", "author", "publishing_date", "category", "distribution_expenses"]
     template_name = "books/book_form.html"
     success_url = reverse_lazy("books:book_list")
 
 
-class BookDeleteView(DeleteView):
+class BookDeleteView(LoginRequiredMixin, DeleteView):
     model = Book
     template_name = "books/book_confirm_delete.html"
     success_url = reverse_lazy("books:book_list")
 
 
-# ===== Import view (CSV/XLSX) =====
+# ----------------------------------------------------------------------
+# 📥 Import view (CSV/XLSX) (Login Required)
+# ----------------------------------------------------------------------
 
 class ImportForm(forms.Form):
     file = forms.FileField(
@@ -78,7 +103,7 @@ class ImportForm(forms.Form):
     )
 
 
-class ImportView(FormView):
+class ImportView(LoginRequiredMixin, FormView):
     template_name = "books/import.html"
     form_class = ImportForm
     success_url = reverse_lazy("books:book_list")
@@ -96,6 +121,7 @@ class ImportView(FormView):
                 messages.error(self.request, "Unsupported file type. Please upload .csv or .xlsx.")
                 return HttpResponseRedirect(self.request.path)
         except Exception as e:
+            # Catch and display specific import errors
             messages.error(self.request, f"Import failed: {e}")
             return HttpResponseRedirect(self.request.path)
 
@@ -108,7 +134,8 @@ class ImportView(FormView):
         self._upsert_rows(reader)
 
     def _import_xlsx(self, upload):
-        df = pd.read_excel(upload)  # requires openpyxl
+        # NOTE: This requires 'openpyxl' package to be installed (pip install openpyxl)
+        df = pd.read_excel(upload)
         # Normalize headers
         df.columns = [str(c).strip().lower() for c in df.columns]
         required = {"title", "author", "publishing_date", "category", "distribution_expenses"}
@@ -123,16 +150,23 @@ class ImportView(FormView):
         for row in rows:
             title = str(row["title"]).strip()
             author = str(row["author"]).strip()
-            # Parse date
+            
+            # --- Date Parsing ---
             publishing_date_raw = row["publishing_date"]
             if isinstance(publishing_date_raw, (datetime,)):
                 publishing_date = publishing_date_raw.date()
             else:
-                publishing_date = datetime.strptime(str(publishing_date_raw).strip(), "%Y-%m-%d").date()
-            # Category
+                try:
+                    date_str = str(publishing_date_raw).strip()
+                    publishing_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+                except ValueError:
+                    raise ValueError(f"Invalid date format for '{publishing_date_raw}'. Expected YYYY-MM-DD.")
+            
+            # --- Category Handling ---
             category_name = str(row["category"]).strip()
             category, _ = BookCategory.objects.get_or_create(name=category_name)
-            # Expenses
+            
+            # --- Expenses Handling ---
             expenses = str(row["distribution_expenses"]).replace(",", "").strip()
             distribution_expenses = float(expenses) if expenses else 0.0
 
@@ -148,13 +182,16 @@ class ImportView(FormView):
             )
 
 
-# ===== Report view (aggregate expenses by category) =====
+# ----------------------------------------------------------------------
+# 📊 Report view (Login Required)
+# ----------------------------------------------------------------------
 
-class ReportView(TemplateView):
+class ReportView(LoginRequiredMixin, TemplateView):
     template_name = "books/report.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        
         # Aggregate total distribution_expenses per category
         aggregates = (
             Book.objects
@@ -163,6 +200,7 @@ class ReportView(TemplateView):
             .order_by("category__name")
         )
         context["aggregates"] = aggregates
+        
         # Grand total
         context["grand_total"] = Book.objects.aggregate(total=Sum("distribution_expenses"))["total"] or 0
         return context

@@ -109,3 +109,8 @@ USE_TZ = True
 
 # ===== Default primary key type =====
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+#Configure redirects and messages
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'books:book_list'
+LOGOUT_REDIRECT_URL = 'login'
