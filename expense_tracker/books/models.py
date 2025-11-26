@@ -16,9 +16,12 @@ class BookCategory(models.Model):
 
 
 class Book(models.Model):
+    # Django automatically adds an AutoField primary key called "id"
     title = models.CharField(max_length=200)
-    author = models.CharField(max_length=150)
-    publishing_date = models.DateField()
+    subtitle = models.CharField(max_length=200, blank=True)  # optional subtitle
+    authors = models.CharField(max_length=150)
+    publisher = models.CharField(max_length=150, blank=True)  # "publisha"
+    published_date = models.DateField()
     category = models.ForeignKey(BookCategory, on_delete=models.PROTECT, related_name="books")
     distribution_expenses = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
@@ -26,11 +29,11 @@ class Book(models.Model):
         ordering = ["title"]
         indexes = [
             models.Index(fields=["category"]),
-            models.Index(fields=["publishing_date"]),
+            models.Index(fields=["published_date"]),
         ]
 
     def __str__(self):
-        return f"{self.title} — {self.author}"
+        return f"{self.title} — {self.authors}"
 
     def get_absolute_url(self):
         return reverse("books:book_list")

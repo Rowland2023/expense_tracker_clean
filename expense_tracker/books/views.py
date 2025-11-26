@@ -75,14 +75,14 @@ class BookListView(LoginRequiredMixin, ListView):
 
 class BookCreateView(LoginRequiredMixin, CreateView):
     model = Book
-    fields = ["title", "author", "publishing_date", "category", "distribution_expenses"]
+    fields = ["title", "subtitle", "authors", "publisher", "published_date", "category", "distribution_expenses"]
     template_name = "books/book_form.html"
     success_url = reverse_lazy("books:book_list")
 
 
 class BookUpdateView(LoginRequiredMixin, UpdateView):
     model = Book
-    fields = ["title", "author", "publishing_date", "category", "distribution_expenses"]
+    fields = ["title", "subtitle", "authors", "publisher", "published_date", "category", "distribution_expenses"]
     template_name = "books/book_form.html"
     success_url = reverse_lazy("books:book_list")
 
@@ -97,9 +97,13 @@ class BookDeleteView(LoginRequiredMixin, DeleteView):
 # 📥 Import view (CSV/XLSX) (Login Required)
 # ----------------------------------------------------------------------
 
+# ----------------------------------------------------------------------
+# 📥 Import view (CSV/XLSX) (Login Required)
+# ----------------------------------------------------------------------
+
 class ImportForm(forms.Form):
     file = forms.FileField(
-        help_text="Upload a CSV or XLSX file with columns: title, author, publishing_date (YYYY-MM-DD), category, distribution_expenses"
+        help_text="Upload a CSV or XLSX file with columns: title, subtitle, authors, publisher, published_date (YYYY-MM-DD), category, distribution_expenses"
     )
 
 
@@ -121,7 +125,6 @@ class ImportView(LoginRequiredMixin, FormView):
                 messages.error(self.request, "Unsupported file type. Please upload .csv or .xlsx.")
                 return HttpResponseRedirect(self.request.path)
         except Exception as e:
-            # Catch and display specific import errors
             messages.error(self.request, f"Import failed: {e}")
             return HttpResponseRedirect(self.request.path)
 
@@ -134,11 +137,10 @@ class ImportView(LoginRequiredMixin, FormView):
         self._upsert_rows(reader)
 
     def _import_xlsx(self, upload):
-        # NOTE: This requires 'openpyxl' package to be installed (pip install openpyxl)
         df = pd.read_excel(upload)
         # Normalize headers
         df.columns = [str(c).strip().lower() for c in df.columns]
-        required = {"title", "author", "publishing_date", "category", "distribution_expenses"}
+        required = {"title", "subtitle", "authors", "publisher", "published_date", "category", "distribution_expenses"}
         missing = required - set(df.columns)
         if missing:
             raise ValueError(f"Missing columns: {', '.join(sorted(missing))}")
@@ -146,26 +148,27 @@ class ImportView(LoginRequiredMixin, FormView):
         self._upsert_rows(rows)
 
     def _upsert_rows(self, rows):
-        # Expect keys: title, author, publishing_date, category, distribution_expenses
         for row in rows:
             title = str(row["title"]).strip()
-            author = str(row["author"]).strip()
-            
+            subtitle = str(row.get("subtitle", "")).strip()
+            authors = str(row["authors"]).strip()
+            publisher = str(row.get("publisher", "")).strip()
+
             # --- Date Parsing ---
-            publishing_date_raw = row["publishing_date"]
-            if isinstance(publishing_date_raw, (datetime,)):
-                publishing_date = publishing_date_raw.date()
+            published_date_raw = row["published_date"]
+            if isinstance(published_date_raw, (datetime,)):
+                published_date = published_date_raw.date()
             else:
                 try:
-                    date_str = str(publishing_date_raw).strip()
-                    publishing_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+                    date_str = str(published_date_raw).strip()
+                    published_date = datetime.strptime(date_str, "%Y-%m-%d").date()
                 except ValueError:
-                    raise ValueError(f"Invalid date format for '{publishing_date_raw}'. Expected YYYY-MM-DD.")
-            
+                    raise ValueError(f"Invalid date format for '{published_date_raw}'. Expected YYYY-MM-DD.")
+
             # --- Category Handling ---
             category_name = str(row["category"]).strip()
             category, _ = BookCategory.objects.get_or_create(name=category_name)
-            
+
             # --- Expenses Handling ---
             expenses = str(row["distribution_expenses"]).replace(",", "").strip()
             distribution_expenses = float(expenses) if expenses else 0.0
@@ -173,9 +176,11 @@ class ImportView(LoginRequiredMixin, FormView):
             # Create or update by (title, author, date)
             obj, created = Book.objects.update_or_create(
                 title=title,
-                author=author,
-                publishing_date=publishing_date,
+                authors=authors,
+                published_date=published_date,
                 defaults={
+                    "subtitle": subtitle,
+                    "publisher": publisher,
                     "category": category,
                     "distribution_expenses": distribution_expenses,
                 },
@@ -203,4 +208,14 @@ class ReportView(LoginRequiredMixin, TemplateView):
         
         # Grand total
         context["grand_total"] = Book.objects.aggregate(total=Sum("distribution_expenses"))["total"] or 0
+
+        # NEW: Aggregate by category and publisher
+        by_publisher = (
+            Book.objects
+            .values("category__name", "publisher")
+            .annotate(total_expenses=Sum("distribution_expenses"))
+            .order_by("category__name", "publisher")
+        )
+        context["by_publisher"] = by_publisher
+
         return context

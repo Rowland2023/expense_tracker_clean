@@ -58,7 +58,7 @@ if ENV == "production":
             "ENGINE": "django.db.backends.postgresql",
             "NAME": os.getenv("POSTGRES_DB", "expense_tracker"),
             "USER": os.getenv("POSTGRES_USER", "postgres"),
-            "PASSWORD": os.getenv("POSTGRES_PASSWORD", ""),
+            "PASSWORD": os.getenv("God4me@2025", ""),
             "HOST": os.getenv("POSTGRES_HOST", "localhost"),
             "PORT": os.getenv("POSTGRES_PORT", "5432"),
             "CONN_MAX_AGE": 60,
