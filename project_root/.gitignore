@@ -1,22 +1,16 @@
 # Environment variables
 .env
-expense_tracker/.env
+../expense_tracker/
+../requirements.txt
+../venv/
 
 # Database
 db.sqlite3
+*.sqlite3
 
 # Python cache
 __pycache__/
 *.pyc
 
-# Django migrations (optional if you regenerate often)
-*/migrations/*.py
-*/migrations/__pycache__/
-
 # Virtual environment
 venv/
-
-# Ignore outer folder and environment
-../expense_tracker/
-../requirements.txt
-../venv/
