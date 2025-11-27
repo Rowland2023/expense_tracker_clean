@@ -1,16 +1,42 @@
-# Environment variables
-.env
-../expense_tracker/
-../requirements.txt
-../venv/
-
-# Database
-db.sqlite3
-*.sqlite3
-
-# Python cache
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*.so
 
 # Virtual environment
 venv/
+ENV/
+env/
+*.env
+
+# Django stuff
+*.log
+*.pot
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+db.sqlite3
+
+# Media & static files
+/media/
+staticfiles/
+static/
+
+# Migrations (optional – ignore if you regenerate often)
+*/migrations/*.py
+*/migrations/__pycache__/
+
+# IDE/editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+.docker/
