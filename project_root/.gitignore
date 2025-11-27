@@ -1,13 +1,17 @@
-# Ignore environment variables
+# Environment variables
 .env
+expense_tracker/.env
 
-# Ignore database files
-*.sqlite3
+# Database
+db.sqlite3
 
-# Ignore compiled Python files
+# Python cache
 __pycache__/
 *.pyc
 
-# Ignore IDE/editor settings
-.vscode/
-.idea/
+# Django migrations (optional if you regenerate often)
+*/migrations/*.py
+*/migrations/__pycache__/
+
+# Virtual environment
+venv/
