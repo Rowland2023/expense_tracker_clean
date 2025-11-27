@@ -1,0 +1,16 @@
+{% extends "books/base.html" %}
+{% block content %}
+<h1>Categories</h1>
+<p><a href="{% url 'books:category_add' %}">Add category</a></p>
+<ul>
+  {% for c in categories %}
+    <li>
+      {{ c.name }}
+      <a href="{% url 'books:category_edit' c.pk %}">Edit</a>
+      <a href="{% url 'books:category_delete' c.pk %}">Delete</a>
+    </li>
+  {% empty %}
+    <li>No categories yet.</li>
+  {% endfor %}
+</ul>
+{% endblock %}
