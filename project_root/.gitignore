@@ -15,3 +15,8 @@ __pycache__/
 
 # Virtual environment
 venv/
+
+# Ignore outer folder and environment
+../expense_tracker/
+../requirements.txt
+../venv/
