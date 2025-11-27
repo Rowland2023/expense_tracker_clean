@@ -14,6 +14,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    'django_ratelimit',
     "books",  # add the app
 ]
 
@@ -24,6 +25,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
+    "django_ratelimit.middleware.RateLimitMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
@@ -54,16 +56,15 @@ ENV = os.getenv("DJANGO_ENV", "local").lower()
 
 if ENV == "production":
     DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": os.getenv("POSTGRES_DB", "expense_tracker"),
-            "USER": os.getenv("POSTGRES_USER", "postgres"),
-            "PASSWORD": os.getenv("God4me@2025", ""),
-            "HOST": os.getenv("POSTGRES_HOST", "localhost"),
-            "PORT": os.getenv("POSTGRES_PORT", "5432"),
-            "CONN_MAX_AGE": 60,
-        }
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'postgres',  # or the DB name you set during creation
+        'USER': 'postgres',
+        'PASSWORD': 'God4me2026',
+        'HOST': 'database-2.c56oc2ieqd1l.eu-north-1.rds.amazonaws.com',
+        'PORT': '5432',
     }
+}
 else:
     DATABASES = {
         "default": {
@@ -80,13 +81,17 @@ STATICFILES_DIRS = [BASE_DIR / "static"]  # optional for local assets
 
 
 # ===== Cache & sessions (Redis in production) =====
+
+ENV = os.getenv("DJANGO_ENV", "development")
+
 if ENV == "production":
     CACHES = {
         "default": {
             "BACKEND": "django.core.cache.backends.redis.RedisCache",
             "LOCATION": os.getenv("REDIS_URL", "redis://127.0.0.1:6379/1"),
             "OPTIONS": {
-                "ssl_cert_reqs": None if os.getenv("REDIS_SSL", "false") == "true" else None
+                # If you need SSL, configure properly; here simplified
+                "ssl_cert_reqs": None if os.getenv("REDIS_SSL", "false") == "true" else None,
             },
         }
     }

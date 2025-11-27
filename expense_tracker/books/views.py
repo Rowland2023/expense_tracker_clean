@@ -13,9 +13,12 @@ from django.views.generic import (
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.forms import UserCreationForm
 from django import forms
+from django.utils.decorators import method_decorator # NEW: Required for class view decoration
+
+# --- NEW: Import for Rate Limiting ---
+from django_ratelimit.decorators import ratelimit 
 
 # Import your models from the current application
-# NOTE: Ensure BookCategory and Book models exist in your models.py
 from .models import BookCategory, Book
 
 # ----------------------------------------------------------------------
@@ -26,8 +29,6 @@ class RegisterView(CreateView):
     """Handles user registration using Django's built-in UserCreationForm."""
     form_class = UserCreationForm
     template_name = 'books/register.html'
-    
-    # Redirects to the namespaced login URL after successful registration
     success_url = reverse_lazy('books:login')
 
 
@@ -66,7 +67,6 @@ class CategoryDeleteView(LoginRequiredMixin, DeleteView):
 # ----------------------------------------------------------------------
 
 class BookListView(LoginRequiredMixin, ListView):
-    # This is the class that was reported as missing
     model = Book
     template_name = "books/book_list.html"
     context_object_name = "books"
@@ -94,11 +94,7 @@ class BookDeleteView(LoginRequiredMixin, DeleteView):
 
 
 # ----------------------------------------------------------------------
-# 📥 Import view (CSV/XLSX) (Login Required)
-# ----------------------------------------------------------------------
-
-# ----------------------------------------------------------------------
-# 📥 Import view (CSV/XLSX) (Login Required)
+# 📥 Import view (CSV/XLSX) (Login Required & Rate Limited)
 # ----------------------------------------------------------------------
 
 class ImportForm(forms.Form):
@@ -106,7 +102,9 @@ class ImportForm(forms.Form):
         help_text="Upload a CSV or XLSX file with columns: title, subtitle, authors, publisher, published_date (YYYY-MM-DD), category, distribution_expenses"
     )
 
-
+# --- RATE LIMITING IMPLEMENTATION ---
+# Applies a limit of 5 requests per minute (5/m) keyed by user ID (user)
+@method_decorator(ratelimit(key='user', rate='5/m', block=True), name='dispatch')
 class ImportView(LoginRequiredMixin, FormView):
     template_name = "books/import.html"
     form_class = ImportForm
@@ -161,6 +159,7 @@ class ImportView(LoginRequiredMixin, FormView):
             else:
                 try:
                     date_str = str(published_date_raw).strip()
+                    # We are sticking to the strict format here as per the original requirement.
                     published_date = datetime.strptime(date_str, "%Y-%m-%d").date()
                 except ValueError:
                     raise ValueError(f"Invalid date format for '{published_date_raw}'. Expected YYYY-MM-DD.")
@@ -209,7 +208,7 @@ class ReportView(LoginRequiredMixin, TemplateView):
         # Grand total
         context["grand_total"] = Book.objects.aggregate(total=Sum("distribution_expenses"))["total"] or 0
 
-        # NEW: Aggregate by category and publisher
+        # Aggregate by category and publisher
         by_publisher = (
             Book.objects
             .values("category__name", "publisher")
