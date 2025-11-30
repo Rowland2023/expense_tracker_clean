@@ -1,0 +1,53 @@
+{% extends "books/base.html" %}
+{% block content %}
+<h1>Books</h1>
+<p><a href="{% url 'books:book_add' %}">Add book</a></p>
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Title</th>
+      <th>Subtitle</th>
+      <th>Authors</th>
+      <th>Publisher</th>
+      <th>Date</th>
+      <th>Category</th>
+      <th>Expenses</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for b in books %}
+    <tr>
+      <td>{{ b.id }}</td>   <!-- auto-generated primary key -->
+      <td>{{ b.title }}</td>
+      <td>{{ b.subtitle }}</td>
+      <td>{{ b.authors }}</td>
+      <td>{{ b.publisher }}</td>
+      <!-- ✅ Format published_date -->
+      <td>{{ b.published_date|date:"Y-M-d" }}</td>
+      <td>{{ b.category.name }}</td>
+      <td>{{ b.distribution_expenses }}</td>
+      <td>
+        <a href="{% url 'books:book_edit' b.pk %}">Edit</a>
+        <a href="{% url 'books:book_delete' b.pk %}">Delete</a>
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="9">No books yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% if is_paginated %}
+<div class="pagination">
+  {% if page_obj.has_previous %}
+    <a href="?page={{ page_obj.previous_page_number }}">Previous</a>
+  {% endif %}
+  Page {{ page_obj.number }} of {{ paginator.num_pages }}
+  {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}">Next</a>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}
