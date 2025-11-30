@@ -13,12 +13,15 @@ from django.views.generic import (
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.forms import UserCreationForm
 from django import forms
-from django.utils.decorators import method_decorator # NEW: Required for class view decoration
+from django.utils.decorators import method_decorator
 
-# --- NEW: Import for Rate Limiting ---
+# --- NEW: Rate Limiting ---
 from django_ratelimit.decorators import ratelimit 
 
-# Import your models from the current application
+# --- NEW: Redis Cache ---
+from django.core.cache import cache
+
+# Import your models
 from .models import BookCategory, Book
 
 # ----------------------------------------------------------------------
@@ -102,8 +105,6 @@ class ImportForm(forms.Form):
         help_text="Upload a CSV or XLSX file with columns: title, subtitle, authors, publisher, published_date (YYYY-MM-DD), category, distribution_expenses"
     )
 
-# --- RATE LIMITING IMPLEMENTATION ---
-# Applies a limit of 5 requests per minute (5/m) keyed by user ID (user)
 @method_decorator(ratelimit(key='user', rate='5/m', block=True), name='dispatch')
 class ImportView(LoginRequiredMixin, FormView):
     template_name = "books/import.html"
@@ -126,6 +127,9 @@ class ImportView(LoginRequiredMixin, FormView):
             messages.error(self.request, f"Import failed: {e}")
             return HttpResponseRedirect(self.request.path)
 
+        # --- NEW: Invalidate Redis cache after import ---
+        cache.delete_many(["aggregates", "grand_total", "by_publisher"])
+
         messages.success(self.request, "Import completed successfully.")
         return super().form_valid(form)
 
@@ -136,7 +140,6 @@ class ImportView(LoginRequiredMixin, FormView):
 
     def _import_xlsx(self, upload):
         df = pd.read_excel(upload)
-        # Normalize headers
         df.columns = [str(c).strip().lower() for c in df.columns]
         required = {"title", "subtitle", "authors", "publisher", "published_date", "category", "distribution_expenses"}
         missing = required - set(df.columns)
@@ -152,28 +155,23 @@ class ImportView(LoginRequiredMixin, FormView):
             authors = str(row["authors"]).strip()
             publisher = str(row.get("publisher", "")).strip()
 
-            # --- Date Parsing ---
             published_date_raw = row["published_date"]
             if isinstance(published_date_raw, (datetime,)):
                 published_date = published_date_raw.date()
             else:
                 try:
                     date_str = str(published_date_raw).strip()
-                    # We are sticking to the strict format here as per the original requirement.
                     published_date = datetime.strptime(date_str, "%Y-%m-%d").date()
                 except ValueError:
                     raise ValueError(f"Invalid date format for '{published_date_raw}'. Expected YYYY-MM-DD.")
 
-            # --- Category Handling ---
             category_name = str(row["category"]).strip()
             category, _ = BookCategory.objects.get_or_create(name=category_name)
 
-            # --- Expenses Handling ---
             expenses = str(row["distribution_expenses"]).replace(",", "").strip()
             distribution_expenses = float(expenses) if expenses else 0.0
 
-            # Create or update by (title, author, date)
-            obj, created = Book.objects.update_or_create(
+            Book.objects.update_or_create(
                 title=title,
                 authors=authors,
                 published_date=published_date,
@@ -187,7 +185,7 @@ class ImportView(LoginRequiredMixin, FormView):
 
 
 # ----------------------------------------------------------------------
-# 📊 Report view (Login Required)
+# 📊 Report view (Login Required + Redis Cache)
 # ----------------------------------------------------------------------
 
 class ReportView(LoginRequiredMixin, TemplateView):
@@ -195,26 +193,35 @@ class ReportView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        
-        # Aggregate total distribution_expenses per category
-        aggregates = (
-            Book.objects
-            .values("category__name")
-            .annotate(total_expenses=Sum("distribution_expenses"))
-            .order_by("category__name")
-        )
-        context["aggregates"] = aggregates
-        
-        # Grand total
-        context["grand_total"] = Book.objects.aggregate(total=Sum("distribution_expenses"))["total"] or 0
 
-        # Aggregate by category and publisher
-        by_publisher = (
-            Book.objects
-            .values("category__name", "publisher")
-            .annotate(total_expenses=Sum("distribution_expenses"))
-            .order_by("category__name", "publisher")
-        )
+        # --- Redis cache integration ---
+        aggregates = cache.get("aggregates")
+        if not aggregates:
+            aggregates = (
+                Book.objects
+                .values("category__name")
+                .annotate(total_expenses=Sum("distribution_expenses"))
+                .order_by("category__name")
+            )
+            cache.set("aggregates", aggregates, timeout=300)
+
+        grand_total = cache.get("grand_total")
+        if grand_total is None:
+            grand_total = Book.objects.aggregate(total=Sum("distribution_expenses"))["total"] or 0
+            cache.set("grand_total", grand_total, timeout=300)
+
+        by_publisher = cache.get("by_publisher")
+        if not by_publisher:
+            by_publisher = (
+                Book.objects
+                .values("category__name", "publisher")
+                .annotate(total_expenses=Sum("distribution_expenses"))
+                .order_by("category__name", "publisher")
+            )
+            cache.set("by_publisher", by_publisher, timeout=300)
+
+        context["aggregates"] = aggregates
+        context["grand_total"] = grand_total
         context["by_publisher"] = by_publisher
 
         return context

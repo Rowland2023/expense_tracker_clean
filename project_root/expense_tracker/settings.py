@@ -82,7 +82,7 @@ else:
 # ===== Static files =====
 STATIC_URL = env("DJANGO_STATIC_URL", default="/static/")
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_DIRS = [BASE_DIR / "static"]
+STATICFILES_DIRS = [BASE_DIR / "assets"]
 
 # ===== Cache & sessions =====
 if DJANGO_ENV == "production":
