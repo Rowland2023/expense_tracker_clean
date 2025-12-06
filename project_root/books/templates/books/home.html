@@ -1,0 +1,58 @@
+{% extends "books/base.html" %}
+
+{% block content %}
+<div class="d-flex flex-column justify-content-center align-items-center text-center" style="min-height: 70vh;">
+  <h1 class="mb-4">Welcome to Expense Tracker!</h1>
+  <p class="lead mb-5">Choose where you want to go:</p>
+
+  <div class="row justify-content-center w-100">
+    <!-- Categories -->
+    <div class="col-md-3 mb-3">
+      <a href="{% url 'books:category_list' %}" class="btn btn-outline-primary btn-lg w-100">
+        Categories
+      </a>
+    </div>
+
+    <!-- Books -->
+    <div class="col-md-3 mb-3">
+      <a href="{% url 'books:book_list' %}" class="btn btn-outline-success btn-lg w-100">
+        Books
+      </a>
+    </div>
+
+    <!-- Import -->
+    <div class="col-md-3 mb-3">
+      <a href="{% url 'books:import' %}" class="btn btn-outline-warning btn-lg w-100">
+        Import
+      </a>
+    </div>
+
+    <!-- Report -->
+    <div class="col-md-3 mb-3">
+      <a href="{% url 'books:report' %}" class="btn btn-outline-info btn-lg w-100">
+        Report
+      </a>
+    </div>
+
+    <!-- Login / Register / Logout -->
+    {% if user.is_authenticated %}
+      <div class="col-md-3 mb-3">
+        <a href="{% url 'books:logout' %}" class="btn btn-outline-danger btn-lg w-100">
+          Logout
+        </a>
+      </div>
+    {% else %}
+      <div class="col-md-3 mb-3">
+        <a href="{% url 'books:login' %}" class="btn btn-outline-dark btn-lg w-100">
+          Login
+        </a>
+      </div>
+      <div class="col-md-3 mb-3">
+        <a href="{% url 'books:register' %}" class="btn btn-outline-secondary btn-lg w-100">
+          Register
+        </a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

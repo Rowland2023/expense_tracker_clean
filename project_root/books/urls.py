@@ -1,4 +1,5 @@
 from django.urls import path
+from .views import HomeView   
 from django.contrib.auth import views as auth_views
 from .views import RegisterView
 from .views import (
@@ -10,6 +11,7 @@ from .views import (
 app_name = "books"
 
 urlpatterns = [
+    path("", HomeView.as_view(), name="home"),
     # Categories
     path("categories/", CategoryListView.as_view(), name="category_list"),
     path("categories/add/", CategoryCreateView.as_view(), name="category_add"),
@@ -33,3 +35,5 @@ urlpatterns = [
     #Registration
     path("register/", RegisterView.as_view(), name="register"),
 ]
+
+

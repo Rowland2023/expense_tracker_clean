@@ -2,6 +2,7 @@ import io
 import csv
 from datetime import datetime
 
+
 import pandas as pd
 from django.contrib import messages
 from django.db.models import Sum
@@ -225,3 +226,7 @@ class ReportView(LoginRequiredMixin, TemplateView):
         context["by_publisher"] = by_publisher
 
         return context
+
+# The home view function will render the home.html template
+class HomeView(TemplateView):                                                                                               
+    template_name = "books/home.html"

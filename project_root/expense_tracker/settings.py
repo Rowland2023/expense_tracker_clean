@@ -1,4 +1,4 @@
-import os
+import dj_database_url
 from pathlib import Path
 import environ
 
@@ -6,12 +6,18 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # ===== Environment setup =====
 env = environ.Env()
-environ.Env.read_env(BASE_DIR / ".env")  # explicitly load .env
+environ.Env.read_env(BASE_DIR / ".env")  # load .env file
+
+DJANGO_ENV = env("DJANGO_ENV", default="development")
 
 # ===== Security =====
-SECRET_KEY = env("DJANGO_SECRET_KEY")  # no default, must be set
+SECRET_KEY = env("DJANGO_SECRET_KEY")
 DEBUG = env.bool("DJANGO_DEBUG", default=False)
-ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=[])
+ALLOWED_HOSTS = env.list(
+    "DJANGO_ALLOWED_HOSTS",
+    default=["localhost", "127.0.0.1", "web"]
+)
+
 
 # ===== Installed apps =====
 INSTALLED_APPS = [
@@ -21,8 +27,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "django_ratelimit",
-    "books",
+    "django_ratelimit",   # rate limiting middleware
+    "books",              # your custom app
 ]
 
 # ===== Middleware =====
@@ -57,34 +63,26 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "expense_tracker.wsgi.application"
 
-# ===== Databases =====
-DJANGO_ENV = env("DJANGO_ENV", default="local").lower()
+# ===== Database =====
+DATABASE_URL = env("DATABASE_URL", default=None)
 
-if DJANGO_ENV == "production":
+if DATABASE_URL:
     DATABASES = {
-        "default": {
-            "ENGINE": env("DB_ENGINE"),
-            "NAME": env("DB_NAME"),
-            "USER": env("DB_USER"),
-            "PASSWORD": env("DB_PASSWORD"),
-            "HOST": env("DB_HOST"),
-            "PORT": env("DB_PORT"),
-        }
+        "default": dj_database_url.parse(DATABASE_URL, conn_max_age=600)
     }
 else:
     DATABASES = {
         "default": {
-            "ENGINE": env("DB_ENGINE", default="django.db.backends.sqlite3"),
-            "NAME": env("DB_NAME", default=str(BASE_DIR / "db.sqlite3")),
+            "ENGINE": env("DB_ENGINE", default="django.db.backends.postgresql"),
+            "NAME": env("DB_NAME", default="postgres"),
+            "USER": env("DB_USER", default="postgres"),
+            "PASSWORD": env("DB_PASSWORD", default=""),
+            "HOST": env("DB_HOST", default="localhost"),
+            "PORT": env("DB_PORT", default="5432"),
         }
     }
 
-# ===== Static files =====
-STATIC_URL = env("DJANGO_STATIC_URL", default="/static/")
-STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_DIRS = [BASE_DIR / "assets"]
-
-# ===== Cache & sessions =====
+# ===== Redis (Cache & Sessions) =====
 if DJANGO_ENV == "production":
     CACHES = {
         "default": {
@@ -92,7 +90,7 @@ if DJANGO_ENV == "production":
             "LOCATION": env("REDIS_URL"),
             "OPTIONS": {
                 "CLIENT_CLASS": "django_redis.client.DefaultClient",
-                "ssl_cert_reqs": None if env.bool("REDIS_SSL", default=False) else None,
+                "ssl_cert_reqs": None if env.bool("REDIS_SSL", default=False) else "required",
             },
         }
     }
@@ -109,6 +107,16 @@ else:
         }
     }
 
+# ===== Static files =====
+STATIC_URL = env("DJANGO_STATIC_URL", default="/static/")
+
+# Match Docker volume mount
+STATIC_ROOT = "/app/static"
+
+# Optional: keep extra asset dirs if you have them
+STATICFILES_DIRS = [BASE_DIR / "assets"]
+
+
 # ===== Internationalization =====
 LANGUAGE_CODE = env("DJANGO_LANGUAGE_CODE", default="en-us")
 TIME_ZONE = env("DJANGO_TIME_ZONE", default="UTC")
@@ -122,3 +130,13 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_URL = env("DJANGO_LOGIN_URL", default="login")
 LOGIN_REDIRECT_URL = env("DJANGO_LOGIN_REDIRECT_URL", default="books:book_list")
 LOGOUT_REDIRECT_URL = env("DJANGO_LOGOUT_REDIRECT_URL", default="login")
+
+# ===== Celery =====
+CELERY_BROKER_URL = env("REDIS_URL", default="redis://redis_cache:6379/1")
+CELERY_RESULT_BACKEND = env("REDIS_URL", default="redis://redis_cache:6379/1")
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes
