@@ -1,4 +1,6 @@
+# -----------------------
 # Python
+# -----------------------
 __pycache__/
 *.py[cod]
 *.pyo
@@ -7,12 +9,21 @@ __pycache__/
 *.egg-info/
 *.egg
 
+# -----------------------
 # Virtual environments
+# -----------------------
 venv/
+
+# -----------------------
+# Environment files
+# -----------------------
 .env
 *.env
+.env.*
 
-# Django stuff
+# -----------------------
+# Django / Project files
+# -----------------------
 *.log
 *.pot
 *.pyc
@@ -25,22 +36,30 @@ static/
 */migrations/__pycache__/
 */migrations/*.py
 
+# -----------------------
 # IDE / Editor
+# -----------------------
 .vscode/
 .idea/
 *.swp
 *.swo
 
+# -----------------------
 # OS files
+# -----------------------
 .DS_Store
 Thumbs.db
 
+# -----------------------
 # Docker
+# -----------------------
 *.pid
 *.seed
 *.pid.lock
 
-# Coverage / testing
+# -----------------------
+# Coverage / Testing
+# -----------------------
 .coverage
 htmlcov/
 .tox/
