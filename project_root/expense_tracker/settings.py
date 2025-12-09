@@ -13,10 +13,15 @@ DJANGO_ENV = env("DJANGO_ENV", default="development")
 # ===== Security =====
 SECRET_KEY = env("DJANGO_SECRET_KEY")
 DEBUG = env.bool("DJANGO_DEBUG", default=False)
+
 ALLOWED_HOSTS = env.list(
     "DJANGO_ALLOWED_HOSTS",
     default=["localhost", "127.0.0.1", "web"]
 )
+
+# Optional: log what Django sees for debugging
+print("ALLOWED_HOSTS:", ALLOWED_HOSTS)
+
 
 
 # ===== Installed apps =====
